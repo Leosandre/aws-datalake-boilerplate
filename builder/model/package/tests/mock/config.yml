@@ -1,0 +1,66 @@
+name: pipeline_example
+domain: test-domain
+layers:
+  origin: raw
+  target: trusted
+
+triggers:
+  - s3:
+      prefix: example/
+      suffix: .json
+  - event_rule:
+      source: ["example_source"]
+      detail_type: ["example_detail"]
+
+tags:
+  version: '1.0.0'
+
+contract:
+  origin_bucket: str
+  origin_key: str
+  target_bucket: str
+  target_key: str
+  route: str
+  database: str
+  table: str
+
+steps:
+  RouteFile:
+    type: lambda
+    properties:
+      module: route_file
+      next_step: RouteChoice
+      timeout_seconds: 60
+      memory_size: 128
+  RouteChoice:
+    type: choice
+    properties:
+      choices:
+        - variable: route
+          equals: type1
+          next_step: ProcessType1
+        - variable: route
+          equals: type2
+          next_step: ProcessType2
+  ProcessType1:
+    type: glue
+    properties:
+      module: process_type1
+      next_step: AddToDatabase
+      glue_version: pythonshell
+      timeout_minutes: 30
+      max_concurrent_runs: 25
+  ProcessType2:
+    type: glue
+    properties:
+      module: process_type2
+      next_step: AddToDatabase
+      glue_version: pythonshell
+      timeout_minutes: 30
+      max_concurrent_runs: 25
+  AddToDatabase:
+    type: lambda
+    properties:
+      module: add_to_database
+      timeout_seconds: 60
+      memory_size: 128

@@ -1,0 +1,107 @@
+pool:
+  vmImage: 'ubuntu-latest'
+
+trigger:
+  branches:
+    include:
+      - master
+
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: dev
+    values:
+      - dev
+      - stg
+      - prd
+
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+      - group: cdk-deploy-vars-dev
+  - ${{ if eq(parameters.environment, 'stg') }}:
+      - group: cdk-deploy-vars-stg
+  - ${{ if eq(parameters.environment, 'prd') }}:
+      - group: cdk-deploy-vars-prd
+  - name: environment
+    value: ${{ parameters.environment }}
+
+stages:
+  - stage: Validate
+    jobs:
+      - job: Test
+        displayName: 'Test'
+        steps:
+          - script: |
+              pip install -r dev-requirements.txt
+            displayName: 'Install Pip Dependencies'
+
+          - script: |
+              python3 -B -m coverage run -m pytest builder
+            displayName: 'Run Unit Tests - Builder'
+
+          - script: |
+              python3 -B -m coverage report --fail-under=90
+            displayName: 'Tests Coverage Report - Builder'
+
+          - script: |
+              python3 -B -m coverage run -m pytest pipelines
+            displayName: 'Run Unit Tests - Pipelines'
+
+          - script: |
+              python3 -B -m coverage report --fail-under=80
+            displayName: 'Tests Coverage Report - Pipelines'
+
+          - script: |
+              python3 -B -m coverage run -m pytest shared
+            displayName: 'Run Unit Tests - Shared'
+
+          - script: |
+              python3 -B -m coverage report --fail-under=90
+            displayName: 'Tests Coverage Report - Shared'
+
+          - script: |
+              python3 -B -m mypy builder
+              python3 -B -m mypy pipelines
+              python3 -B -m mypy shared
+            displayName: 'Mypy Static Type Checking'
+            
+          - script: |
+              python3 -B -m bandit . -r
+            displayName: 'Bandit Security Checks'
+
+          - script: |
+              python3 -B -m isort --check-only --diff .
+            displayName: 'Isort Code Formatting Checks'
+
+          - script: |
+              python3 -B -m black --check --diff .
+            displayName: 'Black Code Formatting Checks'
+
+  - stage: Deploy
+    jobs:
+      - job: CDKSynth
+        displayName: 'CDK Synth'
+        steps:                    
+          - script: |
+              pip install -r requirements.txt
+            displayName: 'Install Pip Dependencies'
+          
+          - script: |
+              aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+              aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+              aws configure set default.region $(AWS_DEFAULT_REGION)
+            displayName: 'Configure AWS CLI'
+            env:
+              AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+              AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
+          
+          - script: |
+              cdk deploy --all --require-approval never
+            displayName: 'CDK Deploy'
+            env:
+              AWS_ACCOUNT_ID: $(AWS_ACCOUNT_ID)
+              ENVIRONMENT_STAGE: $(ENVIRONMENT_STAGE)
+              AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
+              DOCKER_BUILDKIT: 1

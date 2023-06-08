@@ -1,0 +1,43 @@
+FROM python:3.9-slim AS builder
+
+WORKDIR /dist
+
+ARG REQUIREMENTS
+ARG EXTRA_JARS
+ARG SHARED_MODULES
+
+
+# install build requirements
+RUN apt-get update && apt-get install -y zip wget
+
+
+# build requirements in bin folder
+COPY ${REQUIREMENTS} ./requirements.txt
+RUN pip install -r ./requirements.txt -t ./bin
+
+
+# copy shared modules to bin folder
+COPY shared ./shared
+COPY ${SHARED_MODULES} ./modules.txt
+RUN sed -i 's/\r$//' modules.txt && \
+    while read line; do \
+        cp -r $line ./bin/shared; \
+    done < modules.txt
+
+
+# zip dependencies from bin folder
+RUN cd bin; zip -r ../dependencies.zip . -i \*
+
+
+# download jars to jars folder
+COPY ${EXTRA_JARS} ./extra_jars.txt
+RUN sed -i 's/\r$//g' extra_jars.txt && \
+    while read line; do \
+        wget --directory-prefix=./jars/ $line; \
+    done < extra_jars.txt
+
+
+# export dependencies to output folder
+FROM scratch AS export
+COPY --from=builder /dist/dependencies.zip ./
+COPY --from=builder /dist/jars ./jars

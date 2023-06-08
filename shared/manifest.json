@@ -1,0 +1,6 @@
+{
+    "example": {
+        "packages": ["requests"],
+        "extra_jars": []
+    }
+}

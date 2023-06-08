@@ -1,0 +1,38 @@
+[tool.isort]
+profile = "black"
+filter_files = true
+force_grid_wrap = 2
+
+[tool.black]
+line-length = 80
+target-version = ['py39']
+
+[tool.pyupgrade]
+py39-plus = true
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = false
+ignore-semiprivate = false
+ignore-private = true
+ignore-property-decorators = false
+ignore-module = true
+ignore-nested-functions = true
+ignore-nested-classes = true
+ignore-setters = false
+fail-under = 100
+exclude = ["builder/", "*/test_*.py", "*.assets*"]
+ignore-regex = ["handler", "main"]
+verbose = 2
+quiet = false
+whitelist-regex = []
+
+[tool.coverage]
+run.omit = ["*/test_*.py", "*/__init__.py"]

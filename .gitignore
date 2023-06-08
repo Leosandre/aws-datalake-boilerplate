@@ -1,0 +1,10 @@
+__pycache__
+.venv
+*.egg-info
+*.cdk.staging
+*cdk.out
+*.env
+*.coverage
+*_cache
+*.assets*
+*dependencies.zip

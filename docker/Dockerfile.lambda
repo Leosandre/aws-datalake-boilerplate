@@ -1,0 +1,37 @@
+FROM python:3.9-slim AS builder
+
+WORKDIR /dist
+
+ARG REQUIREMENTS
+ARG SHARED_MODULES
+ARG SOURCE_FOLDER
+
+# install build requirements
+RUN apt-get update && apt-get install -y wget
+
+
+# build requirements in bin folder
+COPY ${REQUIREMENTS} ./requirements.txt
+RUN pip install -r ./requirements.txt -t ./bin
+
+
+# copy shared modules to bin folder
+COPY shared ./shared
+COPY ${SHARED_MODULES} ./modules.txt
+RUN sed -i 's/\r$//' modules.txt && \
+    while read line; do \
+        cp -r $line ./bin/shared; \
+    done < modules.txt
+
+# copy source folder to bin folder
+ADD ${SOURCE_FOLDER}/src/ ./bin
+
+
+# export dependencies from bin folder to working directory
+FROM public.ecr.aws/lambda/python:3.9
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+COPY --from=builder /dist/bin ./
+RUN ls -a
+
+CMD ["index.handler"]

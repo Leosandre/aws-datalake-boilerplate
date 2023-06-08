@@ -1,0 +1,5 @@
+{
+    "packages": ["numpy"],
+    "extra_jars": ["https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark3-runtime/0.13.2/iceberg-spark3-runtime-0.13.2.jar"],
+    "shared_modules": ["example"]
+}

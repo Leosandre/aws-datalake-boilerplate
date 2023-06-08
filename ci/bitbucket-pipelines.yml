@@ -1,0 +1,37 @@
+image: python:3.9.17
+
+pipelines:
+  default:
+    - step:
+        name: 'Validate'
+        services:
+          - docker
+        script:
+          - pip install -r dev-requirements.txt
+          - python3 -B -m coverage run -m pytest builder
+          - python3 -B -m coverage report --fail-under=90
+
+          - python3 -B -m coverage run -m pytest pipelines
+          - python3 -B -m coverage report --fail-under=80
+          
+          - python3 -B -m coverage run -m pytest shared
+          - python3 -B -m coverage report --fail-under=90
+          
+          - python3 -B -m mypy builder
+          - python3 -B -m mypy pipelines
+          - python3 -B -m mypy shared
+          
+          - python3 -B -m bandit . -r
+          - python3 -B -m isort --check-only --diff .
+          - python3 -B -m black --check --diff .
+    - step:
+        name: 'Deploy'
+        services:
+          - docker
+        script:
+          - export DOCKER_BUILDKIT=1
+          - pip install -r requirements.txt
+          - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+          - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          - aws configure set default.region $AWS_DEFAULT_REGION
+          - cdk deploy --all --require-approval never
